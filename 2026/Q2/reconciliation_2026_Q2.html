@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reconciliation Report</title>
+<style>
+  :root {
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --yellow: #ca8a04;
+    --yellow-bg: #fefce8;
+    --yellow-border: #fef08a;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+    --gray: #6b7280;
+    --gray-bg: #f9fafb;
+    --gray-border: #e5e7eb;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --bg: #ffffff;
+    --surface: #f9fafb;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    line-height: 1.5;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: white;
+    padding: 32px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .header .subtitle { opacity: 0.85; font-size: 14px; }
+  .header .meta { display: flex; gap: 24px; margin-top: 16px; font-size: 13px; opacity: 0.8; flex-wrap: wrap; }
+
+  /* Status banner */
+  .status-banner {
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-banner.clean { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .status-banner.action { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+  .status-banner .icon { font-size: 20px; }
+  .issues-list { margin-top: 10px; font-weight: 400; font-size: 13px; color: var(--red); }
+  .issues-list li { margin-left: 20px; margin-top: 4px; }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px; }
+  .summary-card .value { font-size: 22px; font-weight: 700; }
+  .summary-card .value.income { color: var(--green); }
+  .summary-card .value.expense { color: var(--red); }
+  .summary-card .value.net { color: var(--blue); }
+
+  /* Count cards */
+  .count-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .count-card {
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .count-card .num { font-size: 28px; font-weight: 700; }
+  .count-card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .count-card.matched { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .count-card.missing { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+  .count-card.nodoc { background: var(--gray-bg); border: 1px solid var(--gray-border); color: var(--gray); }
+  .count-card.crossq { background: var(--yellow-bg); border: 1px solid var(--yellow-border); color: var(--yellow); }
+
+  /* Month sections */
+  .month-section {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .month-header {
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--gray-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .month-header:hover { background: #f3f4f6; }
+  .month-header h2 { font-size: 16px; font-weight: 600; }
+  .month-header .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge.clean { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge.action { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+  .month-stats {
+    display: flex;
+    gap: 20px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+  }
+  .month-stats span { white-space: nowrap; }
+
+  .month-body { padding: 0; }
+  .month-body.collapsed { display: none; }
+
+  /* Transaction category blocks */
+  .tx-category {
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .tx-category:last-child { border-bottom: none; }
+  .tx-cat-header {
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tx-cat-header .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .cat-matched .tx-cat-header { color: var(--green); background: var(--green-bg); }
+  .cat-matched .dot { background: var(--green); }
+  .cat-missing .tx-cat-header { color: var(--red); background: var(--red-bg); }
+  .cat-missing .dot { background: var(--red); }
+  .cat-nodoc .tx-cat-header { color: var(--gray); background: var(--gray-bg); }
+  .cat-nodoc .dot { background: var(--gray); }
+  .cat-crossq .tx-cat-header { color: var(--yellow); background: var(--yellow-bg); }
+  .cat-crossq .dot { background: var(--yellow); }
+
+  /* Transaction rows */
+  .tx-table { width: 100%; border-collapse: collapse; }
+  .tx-table td { padding: 8px 20px; font-size: 13px; vertical-align: top; }
+  .tx-table tr { border-bottom: 1px solid #f3f4f6; }
+  .tx-table tr:last-child { border-bottom: none; }
+  .tx-date { width: 70px; color: var(--text-secondary); white-space: nowrap; }
+  .tx-amount { width: 120px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tx-amount.pos { color: var(--green); }
+  .tx-amount.neg { color: var(--red); }
+  .tx-detail { color: var(--text); }
+  .tx-detail .counterparty { font-weight: 500; }
+  .tx-detail .pdf-match { color: var(--green); font-size: 12px; }
+  .tx-detail .hint { color: var(--red); font-size: 12px; font-style: italic; }
+  .tx-detail .note { color: var(--text-secondary); font-size: 12px; }
+  .tx-detail .reason { color: var(--gray); font-size: 12px; }
+
+  .empty-state { padding: 12px 20px; font-size: 13px; color: var(--text-secondary); font-style: italic; }
+
+  /* Extra documents */
+  .extras-section {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .extras-header {
+    padding: 16px 20px;
+    background: var(--yellow-bg);
+    border-bottom: 1px solid var(--yellow-border);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--yellow);
+  }
+  .extras-table { width: 100%; border-collapse: collapse; }
+  .extras-table td { padding: 8px 20px; font-size: 13px; vertical-align: top; }
+  .extras-table tr { border-bottom: 1px solid #f3f4f6; }
+  .extras-table tr:last-child { border-bottom: none; }
+  .extra-file { font-weight: 500; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-secondary); }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .container { max-width: 100%; padding: 0; }
+    .header { border-radius: 0; }
+    .month-body.collapsed { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<script>
+const DATA = {
+  "year": 2026,
+  "quarter": "Q2",
+  "generated": "2026-07-02",
+  "account": "6222151389/0800",
+  "holder": "Martin Zachov",
+  "months": [
+    {
+      "name": "April 2026",
+      "statement_number": "004",
+      "opening_balance": 103336.17,
+      "closing_balance": 46647.38,
+      "total_income": 222809.40,
+      "total_expenses": -279498.19,
+      "transactions": [
+        { "date": "02.04.2026", "amount": -506.14, "type": "Platba kartou", "counterparty": "Anthropic", "description": "ANTHROPIC.COM, EUR 20.00, d.tran. 31.03.2026", "variable_symbol": "—", "category": "cross_quarter", "matched_pdf": "—", "note": "Card transaction dated 31.03.2026 (Q1); posted 02.04 due to settlement delay. Invoice BUPPGQRR-0004 (DUZP 31.03.2026) belongs to Q1 and is filed there (vydaj_anthropic_BUPPGQRR-0004.pdf)." },
+        { "date": "03.04.2026", "amount": -10.95, "type": "Platba kartou", "counterparty": "Google Cloud", "description": "GOOGLE*CLOUD, d.tran. 01.04.2026", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Non-business expense (personal) — excluded from business books; no document needed" },
+        { "date": "10.04.2026", "amount": -1174.68, "type": "Inkaso", "counterparty": "T-Mobile Czech Republic", "description": "Vyúčtování služeb 6.3.–5.4.2026", "variable_symbol": "1936232826", "category": "matched", "matched_pdf": "vydaj_tmobile_1936232826.pdf", "note": "VS match — T-Mobile invoice 1936232826, DUZP 05.04.2026" },
+        { "date": "14.04.2026", "amount": -4235.00, "type": "Tuzemská odchozí úhrada", "counterparty": "SPAMI s.r.o.", "description": "Účetní práce za I. Q 2026", "variable_symbol": "2026069", "category": "matched", "matched_pdf": "vydaj_spami_2026069.pdf", "note": "VS match — SPAMI invoice 2026069, DUZP 14.04.2026" },
+        { "date": "17.04.2026", "amount": -2406.72, "type": "Platba kartou", "counterparty": "Miro (RealtimeBoard BV)", "description": "MIRO.COM Amsterdam, EUR 96.00, d.tran. 16.04.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_miro_RNT9JAW8-0001.pdf", "note": "Miro invoice RNT9JAW8-0001 (€96.00, Starter yearly, DUZP 16.04.2026)" },
+        { "date": "25.04.2026", "amount": -5000.00, "type": "Platba kartou", "counterparty": "ORLEN (Benzina) Litvínov", "description": "Fuel-card top-up, CZK 5000.00, d.tran. 23.04.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_orlen_349992604070004.pdf", "note": "Fuel-card prepayment. Documented by ORLEN receipts: 07.04 (1 837.31), 09.04 (2 070.00), 23.04 (1 900.10). Receipt totals need not equal the 5 000 top-up (fuel-card model)." },
+
+        { "date": "05.04.2026", "amount": -131.70, "type": "Platba kartou", "counterparty": "Anthropic", "description": "ANTHROPIC.COM, USD 6.05, d.tran. 03.04.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_anthropic_R27NSHFT-0001.pdf", "note": "Invoice R27NSHFT-0001 ($6.05 USD, one-time credit purchase, DUZP 03.04.2026; billed to 'Zachy's Individual Org' API account)" },
+
+        { "date": "10.04.2026", "amount": -4205.00, "type": "Trvalý příkaz", "counterparty": "VOZP", "description": "VOZP zálohy", "variable_symbol": "9003094320", "category": "no_doc_needed", "matched_pdf": "—", "note": "Health insurance advance" },
+        { "date": "13.04.2026", "amount": -30000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "14.04.2026", "amount": -10005.00, "type": "Trvalý příkaz", "counterparty": "OSSZ", "description": "OSSZ zálohy", "variable_symbol": "50570720", "category": "no_doc_needed", "matched_pdf": "—", "note": "Social insurance advance" },
+        { "date": "14.04.2026", "amount": -96823.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Finanční úřad 705-77628461/0710", "description": "Daň z příjmu (income tax)", "variable_symbol": "9003094320", "category": "no_doc_needed", "matched_pdf": "—", "note": "Income tax payment to tax office" },
+        { "date": "16.04.2026", "amount": -100000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "24.04.2026", "amount": -15000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "28.04.2026", "amount": -10000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+
+        { "date": "13.04.2026", "amount": 222809.40, "type": "Příchozí úhrada", "counterparty": "COPS Solutions s.r.o.", "description": "Payment of issued invoice", "variable_symbol": "20260003", "category": "cross_quarter", "matched_pdf": "—", "note": "Payment for previous quarter's invoice 2026-0003 (DUZP ~31.03.2026) — OK, invoice PDF is in Q1 folder (prijem_cops_20260003.pdf)" }
+      ]
+    },
+    {
+      "name": "May 2026",
+      "statement_number": "005",
+      "opening_balance": 46647.38,
+      "closing_balance": 78559.67,
+      "total_income": 198052.80,
+      "total_expenses": -166140.51,
+      "transactions": [
+        { "date": "02.05.2026", "amount": -2755.47, "type": "Platba kartou", "counterparty": "Anthropic (Claude.ai)", "description": "ANTHROPIC.COM CLAUDE.AI SUBS, EUR 109.64, d.tran. 01.05.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_anthropic_BUPPGQRR-0006.pdf", "note": "Invoice BUPPGQRR-0006 (€109.64, Claude Pro annual, DUZP 01.05.2026; €70.36 credit applied)" },
+        { "date": "03.05.2026", "amount": -0.36, "type": "Platba kartou", "counterparty": "Google Cloud", "description": "GOOGLE*CLOUD, d.tran. 01.05.2026", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Non-business expense (personal) — excluded from business books; no document needed" },
+        { "date": "12.05.2026", "amount": -1174.68, "type": "Inkaso", "counterparty": "T-Mobile Czech Republic", "description": "Vyúčtování služeb 6.4.–5.5.2026", "variable_symbol": "1942222926", "category": "matched", "matched_pdf": "vydaj_tmobile_1942222926.pdf", "note": "VS match — T-Mobile invoice 1942222926, DUZP 05.05.2026" },
+
+        { "date": "12.05.2026", "amount": 198052.80, "type": "Příchozí úhrada", "counterparty": "COPS Solutions s.r.o.", "description": "Payment of issued invoice (income)", "variable_symbol": "20260004", "category": "matched", "matched_pdf": "prijem_cops_20260004.pdf", "note": "VS match — issued invoice 2026-0004 (DUZP 30.04.2026, 198 052.80; work for month 4/2026)" },
+
+        { "date": "05.05.2026", "amount": -10000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "11.05.2026", "amount": -4205.00, "type": "Trvalý příkaz", "counterparty": "VOZP", "description": "VOZP zálohy", "variable_symbol": "9003094320", "category": "no_doc_needed", "matched_pdf": "—", "note": "Health insurance advance" },
+        { "date": "12.05.2026", "amount": -100000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "14.05.2026", "amount": -10005.00, "type": "Trvalý příkaz", "counterparty": "OSSZ", "description": "OSSZ zálohy", "variable_symbol": "50570720", "category": "no_doc_needed", "matched_pdf": "—", "note": "Social insurance advance" },
+        { "date": "26.05.2026", "amount": -38000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" }
+      ]
+    },
+    {
+      "name": "June 2026",
+      "statement_number": "006",
+      "opening_balance": 78559.67,
+      "closing_balance": 66350.11,
+      "total_income": 171045.60,
+      "total_expenses": -183255.16,
+      "transactions": [
+        { "date": "03.06.2026", "amount": -5000.00, "type": "Platba kartou", "counterparty": "ORLEN (Benzina) Litvínov", "description": "Fuel-card top-up, CZK 5000.00, d.tran. 01.06.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_orlen_349992606020004.pdf", "note": "Fuel-card prepayment. Documented by ORLEN receipts: 09.05 (2 087.89), 20.05 (1 483.55), 02.06 (1 927.80)." },
+        { "date": "05.06.2026", "amount": -26.19, "type": "Platba kartou", "counterparty": "Anthropic", "description": "ANTHROPIC.COM, EUR 1.05, d.tran. 03.06.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_anthropic_BUPPGQRR-0008.pdf", "note": "Invoice BUPPGQRR-0008 (€1.05, Max plan, DUZP 03.06.2026; €88.95 credit applied)" },
+        { "date": "10.06.2026", "amount": -1180.97, "type": "Inkaso", "counterparty": "T-Mobile Czech Republic", "description": "Vyúčtování služeb 6.5.–5.6.2026", "variable_symbol": "1946123026", "category": "matched", "matched_pdf": "vydaj_tmobile_1946123026.pdf", "note": "VS match — T-Mobile invoice 1946123026, DUZP 05.06.2026" },
+        { "date": "12.06.2026", "amount": -5000.00, "type": "Platba kartou", "counterparty": "ORLEN (Benzina) Litvínov", "description": "Fuel-card top-up, CZK 5000.00, d.tran. 10.06.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_orlen_349992606100009.pdf", "note": "Fuel-card prepayment. Documented by ORLEN receipts: 10.06 (2 008.64), 15.06 (1 908.08), 25.06 (494.16)." },
+        { "date": "23.06.2026", "amount": -9793.00, "type": "Platba kartou", "counterparty": "Datart (HP TRONIC Zlín)", "description": "DATART.CZ Zlín — Xiaomi 15T 5G, CZK 9793.00, d.tran. 21.06.2026", "variable_symbol": "—", "category": "matched", "matched_pdf": "vydaj_datart_1627065507.pdf", "note": "Datart daňový doklad 1627065507 (DUZP 21.06.2026, 9 793.00). Final invoice with advance (záloha 5761215551) deducted — K úhradě 0.00." },
+
+        { "date": "11.06.2026", "amount": 171045.60, "type": "Příchozí úhrada", "counterparty": "COPS Solutions s.r.o.", "description": "Payment of issued invoice (income)", "variable_symbol": "20260005", "category": "matched", "matched_pdf": "prijem_cops_20260005.pdf", "note": "VS match — issued invoice 2026-0005 (DUZP 29.05.2026, 171 045.60; work for month 5/2026)" },
+
+        { "date": "04.06.2026", "amount": -645.00, "type": "Platba kartou", "counterparty": "Mr.Parkit (Praha 2)", "description": "Parking, CZK 645.00, d.tran. 02.06.2026", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Parking — no separate invoice issued (confirmed by owner); the card/bank record is the proof. Small undocumented business expense." },
+
+        { "date": "30.06.2026", "amount": 229484.06, "type": "Vydaná faktura", "counterparty": "COPS Solutions s.r.o.", "description": "Issued invoice 2026-0006 (income) — awaiting payment", "variable_symbol": "20260006", "category": "cross_quarter", "matched_pdf": "prijem_cops_20260006.pdf", "note": "Issued invoice 2026-0006, DUZP 30.06.2026, due 14.07.2026 — belongs to Q2 by DUZP; payment expected in Q3. No incoming bank payment in Q2 (expected — do not flag as missing income)." },
+
+        { "date": "08.06.2026", "amount": -15000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "10.06.2026", "amount": -4205.00, "type": "Trvalý příkaz", "counterparty": "VOZP", "description": "VOZP zálohy", "variable_symbol": "9003094320", "category": "no_doc_needed", "matched_pdf": "—", "note": "Health insurance advance" },
+        { "date": "15.06.2026", "amount": -32400.00, "type": "Trvalý příkaz", "counterparty": "Finanční úřad 721-77628461/0710", "description": "DPFO – zálohy na rok 2026/2027", "variable_symbol": "9003094320", "category": "no_doc_needed", "matched_pdf": "—", "note": "Income tax advance (DPFO)" },
+        { "date": "15.06.2026", "amount": -10005.00, "type": "Trvalý příkaz", "counterparty": "OSSZ", "description": "OSSZ zálohy", "variable_symbol": "50570720", "category": "no_doc_needed", "matched_pdf": "—", "note": "Social insurance advance" },
+        { "date": "16.06.2026", "amount": -60000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" },
+        { "date": "16.06.2026", "amount": -40000.00, "type": "Tuzemská odchozí úhrada", "counterparty": "Own account 2190590193/0800", "description": "Personal transfer to savings", "variable_symbol": "—", "category": "no_doc_needed", "matched_pdf": "—", "note": "Personal transfer (own account)" }
+      ]
+    }
+  ],
+  "extra_documents": [],
+  "summary": {
+    "total_income": 591907.80,
+    "total_expenses": -628893.86,
+    "net": -36986.06,
+    "matched_count": 14,
+    "missing_count": 0,
+    "no_doc_needed_count": 21,
+    "cross_quarter_count": 3
+  },
+  "status": "CLEAN",
+  "issues": []
+};
+
+function fmt(n) {
+  if (n == null || n === '—') return '—';
+  const abs = Math.abs(n);
+  const parts = abs.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const sign = n < 0 ? '-' : (n > 0 ? '+' : '');
+  return sign + parts.join('.') + ' CZK';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderTxRows(txs) {
+  if (!txs.length) return '<tr><td colspan="3" class="empty-state">(none)</td></tr>';
+  return txs.map(t => {
+    const amtClass = t.amount > 0 ? 'pos' : 'neg';
+    let detail = `<span class="counterparty">${esc(t.counterparty)}</span>`;
+    if (t.description && t.description !== t.counterparty) detail += ` <span class="note">— ${esc(t.description)}</span>`;
+    if (t.variable_symbol && t.variable_symbol !== '—') detail += ` <span class="note">[VS: ${esc(t.variable_symbol)}]</span>`;
+    if (t.category === 'matched' && t.matched_pdf && t.matched_pdf !== '—')
+      detail += `<br><span class="pdf-match">&#10003; ${esc(t.matched_pdf)}</span>`;
+    if (t.category === 'matched' && t.note)
+      detail += `<br><span class="note">${esc(t.note)}</span>`;
+    if (t.category === 'missing' && t.note)
+      detail += `<br><span class="hint">&#8627; ${esc(t.note)}</span>`;
+    if (t.category === 'no_doc_needed' && t.note)
+      detail += `<br><span class="reason">${esc(t.note)}</span>`;
+    if (t.category === 'cross_quarter' && t.note)
+      detail += `<br><span class="note">&#8627; ${esc(t.note)}</span>`;
+    return `<tr>
+      <td class="tx-date">${esc(t.date)}</td>
+      <td class="tx-amount ${amtClass}">${fmt(t.amount)}</td>
+      <td class="tx-detail">${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMonth(m, idx) {
+  const txs = m.transactions || [];
+  const matched = txs.filter(t => t.category === 'matched');
+  const missing = txs.filter(t => t.category === 'missing');
+  const nodoc = txs.filter(t => t.category === 'no_doc_needed');
+  const crossq = txs.filter(t => t.category === 'cross_quarter');
+  const isClean = missing.length === 0;
+
+  return `
+  <div class="month-section">
+    <div class="month-header" onclick="this.nextElementSibling.nextElementSibling.classList.toggle('collapsed')">
+      <h2>${esc(m.name)} <span style="font-weight:400;color:var(--text-secondary);font-size:13px">#${esc(m.statement_number)}</span></h2>
+      <span class="badge ${isClean ? 'clean' : 'action'}">${isClean ? 'Clean' : missing.length + ' Missing'}</span>
+    </div>
+    <div class="month-stats">
+      <span>Opening: <b>${fmt(m.opening_balance).replace(/^[+-]/, '')}</b></span>
+      <span>Closing: <b>${fmt(m.closing_balance).replace(/^[+-]/, '')}</b></span>
+      <span>Income: <b style="color:var(--green)">${fmt(m.total_income)}</b></span>
+      <span>Expenses: <b style="color:var(--red)">${fmt(m.total_expenses)}</b></span>
+      <span>Txns: <b>${txs.length}</b></span>
+    </div>
+    <div class="month-body">
+      ${matched.length || true ? `<div class="tx-category cat-matched">
+        <div class="tx-cat-header"><span class="dot"></span> Matched (${matched.length})</div>
+        <table class="tx-table">${renderTxRows(matched)}</table>
+      </div>` : ''}
+      ${`<div class="tx-category cat-missing">
+        <div class="tx-cat-header"><span class="dot"></span> Missing Documents (${missing.length})</div>
+        <table class="tx-table">${renderTxRows(missing)}</table>
+      </div>`}
+      ${`<div class="tx-category cat-nodoc">
+        <div class="tx-cat-header"><span class="dot"></span> No Document Needed (${nodoc.length})</div>
+        <table class="tx-table">${renderTxRows(nodoc)}</table>
+      </div>`}
+      ${crossq.length ? `<div class="tx-category cat-crossq">
+        <div class="tx-cat-header"><span class="dot"></span> Cross-Quarter (${crossq.length})</div>
+        <table class="tx-table">${renderTxRows(crossq)}</table>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const d = DATA;
+  const s = d.summary || {};
+  const isClean = d.status === 'CLEAN';
+
+  let html = `
+  <div class="header">
+    <h1>Reconciliation: ${esc(d.year)} ${esc(d.quarter)}</h1>
+    <div class="subtitle">Bank Statement vs. Document Cross-Reference</div>
+    <div class="meta">
+      <span>Account: ${esc(d.account)}</span>
+      <span>Holder: ${esc(d.holder)}</span>
+      <span>Generated: ${esc(d.generated)}</span>
+      <span>Statements: ${(d.months||[]).length}</span>
+    </div>
+  </div>
+
+  <div class="status-banner ${isClean ? 'clean' : 'action'}">
+    <span class="icon">${isClean ? '&#10004;' : '&#9888;'}</span>
+    <div>
+      <div>${isClean ? 'CLEAN — All transactions accounted for' : 'ACTION NEEDED — ' + (s.missing_count||0) + ' missing document(s)'}</div>
+      ${!isClean && d.issues && d.issues.length ? '<ol class="issues-list">' + d.issues.map(i => '<li>' + esc(i) + '</li>').join('') + '</ol>' : ''}
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card"><div class="label">Total Income</div><div class="value income">${fmt(s.total_income)}</div></div>
+    <div class="summary-card"><div class="label">Total Expenses</div><div class="value expense">${fmt(s.total_expenses)}</div></div>
+    <div class="summary-card"><div class="label">Net</div><div class="value net">${fmt(s.net)}</div></div>
+  </div>
+
+  <div class="count-grid">
+    <div class="count-card matched"><div class="num">${s.matched_count||0}</div><div class="lbl">Matched</div></div>
+    <div class="count-card missing"><div class="num">${s.missing_count||0}</div><div class="lbl">Missing</div></div>
+    <div class="count-card nodoc"><div class="num">${s.no_doc_needed_count||0}</div><div class="lbl">No Doc Needed</div></div>
+    <div class="count-card crossq"><div class="num">${s.cross_quarter_count||0}</div><div class="lbl">Cross-Quarter</div></div>
+  </div>
+  `;
+
+  (d.months || []).forEach((m, i) => { html += renderMonth(m, i); });
+
+  const extras = d.extra_documents || [];
+  if (extras.length) {
+    html += `
+    <div class="extras-section">
+      <div class="extras-header">Removed / Extra Documents (${extras.length})</div>
+      <table class="extras-table">
+        ${extras.map(e => `<tr>
+          <td><span class="extra-file">${esc(e.filename)}</span></td>
+          <td>${esc(e.vendor)}</td>
+          <td class="tx-amount" style="color:var(--text)">${e.amount != null ? fmt(e.amount).replace(/^[+-]/, '') : '—'}</td>
+          <td>${esc(e.date || '—')}</td>
+          <td><span class="note">${esc(e.note || '')}</span></td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+  }
+
+  html += `<div class="footer">Reconciliation report generated by Claude Code reconcile skill</div>`;
+
+  document.getElementById('app').innerHTML = html;
+  document.title = 'Reconciliation ' + d.year + ' ' + d.quarter;
+}
+
+render();
+</script>
+</body>
+</html>

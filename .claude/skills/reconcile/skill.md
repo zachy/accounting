@@ -156,7 +156,56 @@ After matching, organize all data into this exact structure. Every transaction f
 
 The key rule: **use DUZP (Datum uskutečnění zdanitelného plnění)** to determine whether a document belongs to the current quarter. A document with DUZP inside the quarter is never "extra" — it either matches a transaction or is a cross-quarter item awaiting payment.
 
-## Step 6: Generate the report
+## Step 6: Remove extra documents
+
+If there are any **extra documents** (PDFs whose DUZP falls outside the current quarter and have no matching bank transaction), **delete them from the quarter folder without asking for confirmation**. These documents do not belong in this quarter.
+
+Print a summary of removed files:
+```
+REMOVED EXTRA DOCUMENTS:
+  [filename.pdf] — [reason]
+  ...
+```
+
+If there are no extra documents, skip this step silently.
+
+Do NOT remove bank statement files (`Vypis_z_uctu_*.pdf`).
+
+## Step 7: Rename documents
+
+Rename ALL non-statement PDF documents remaining in the quarter folder to a standardized format:
+
+```
+<direction>_<companyname>_<invoicenumber>.pdf
+```
+
+Where:
+- **`<direction>`** is one of:
+  - `prijem` — for issued invoices (income documents, e.g. `martinzachov-*` invoices)
+  - `vydaj` — for received invoices/receipts (expense documents, e.g. T-Mobile, ORLEN, Spami, etc.)
+  - `zaloha` — for advance payment (záloha) invoices issued by vendors upon receiving prepayment (e.g. Datart "Faktura za přijatou zálohu"). These are distinct from the final invoice (`vydaj`) which documents the goods/services delivered and deducts the záloha.
+- **`<companyname>`** — lowercase, no spaces or diacritics (e.g. `tmobile`, `orlen`, `spami`, `alza`, `openai`, `anthropic`, `aeroparking`, `google`, `datart`, `suntech`, `cops`)
+- **`<invoicenumber>`** — the invoice/document number from the PDF (e.g. `1855242526`, `2026004`, `PRG-PA-3038379`, `7B09DEBF-0010`). For ORLEN receipts use the receipt document number from the PDF (e.g. `349992601120004`). If no clear invoice number exists, use the date in `YYYYMMDD` format.
+
+**Examples:**
+- `tmobile_58043079_2601.pdf` → `vydaj_tmobile_1855242526.pdf`
+- `spami2025Q4.pdf` → `vydaj_spami_2026004.pdf`
+- `chatgpt.pdf` → `vydaj_openai_7B09DEBF-0010.pdf`
+- `PRG-PA-3038379.pdf` → `vydaj_aeroparking_PRG-PA-3038379.pdf`
+- `ORLEN_uctenka_2026-01-12_CS_349_06350244519.pdf` → `vydaj_orlen_349992601120004.pdf`
+- `martinzachov-2026-0001.pdf` → `prijem_cops_20260001.pdf`
+- `datart_zaloha_5760367434.pdf` → `zaloha_datart_5760367434.pdf` (advance payment invoice)
+- `datart_faktura_6701600329.pdf` → `vydaj_datart_6701600329.pdf` (final invoice with záloha deducted)
+
+Show the user the full rename plan (old name → new name) and then **proceed with the renames immediately without asking for confirmation**.
+
+Do NOT rename bank statement files (`Vypis_z_uctu_*.pdf`).
+
+After renaming, update all `matched_pdf` fields and `extra_documents` filenames in the reconciliation data to reflect the new filenames.
+
+## Step 8: Generate the report
+
+This step runs LAST, after deletions and renames, so all filenames in the report reflect the final state of the folder.
 
 You produce TWO outputs:
 1. A **console summary** printed to the user (concise, scannable)
@@ -310,48 +359,6 @@ Use the HTML template from the bundled file at `templates/report.html`. Read tha
 ```
 
 Tell the user where the HTML file was saved and suggest they open it in a browser.
-
-## Step 7: Remove extra documents
-
-After generating the report, if there are any **extra documents** (PDFs whose DUZP falls outside the current quarter and have no matching bank transaction), **delete them from the quarter folder without asking for confirmation**. These documents do not belong in this quarter.
-
-Print a summary of removed files:
-```
-REMOVED EXTRA DOCUMENTS:
-  [filename.pdf] — [reason]
-  ...
-```
-
-If there are no extra documents, skip this step silently.
-
-Do NOT remove bank statement files (`Vypis_z_uctu_*.pdf`) or the generated reconciliation HTML file.
-
-## Step 8: Rename documents
-
-After generating the report, rename ALL non-statement PDF documents in the quarter folder to a standardized format:
-
-```
-<direction>_<companyname>_<invoicenumber>.pdf
-```
-
-Where:
-- **`<direction>`** is either:
-  - `prijem` — for issued invoices (income documents, e.g. `martinzachov-*` invoices)
-  - `vydaj` — for received invoices/receipts (expense documents, e.g. T-Mobile, ORLEN, Spami, etc.)
-- **`<companyname>`** — lowercase, no spaces or diacritics (e.g. `tmobile`, `orlen`, `spami`, `alza`, `openai`, `anthropic`, `aeroparking`, `google`, `datart`, `suntech`, `cops`)
-- **`<invoicenumber>`** — the invoice/document number from the PDF (e.g. `1855242526`, `2026004`, `PRG-PA-3038379`, `7B09DEBF-0010`). For ORLEN receipts use the receipt document number from the PDF (e.g. `349992601120004`). If no clear invoice number exists, use the date in `YYYYMMDD` format.
-
-**Examples:**
-- `tmobile_58043079_2601.pdf` → `vydaj_tmobile_1855242526.pdf`
-- `spami2025Q4.pdf` → `vydaj_spami_2026004.pdf`
-- `chatgpt.pdf` → `vydaj_openai_7B09DEBF-0010.pdf`
-- `PRG-PA-3038379.pdf` → `vydaj_aeroparking_PRG-PA-3038379.pdf`
-- `ORLEN_uctenka_2026-01-12_CS_349_06350244519.pdf` → `vydaj_orlen_349992601120004.pdf`
-- `martinzachov-2026-0001.pdf` → `prijem_cops_20260001.pdf`
-
-Show the user the full rename plan (old name → new name) and then **proceed with the renames immediately without asking for confirmation**.
-
-Do NOT rename bank statement files (`Vypis_z_uctu_*.pdf`) or the generated reconciliation HTML file.
 
 ## Important notes
 
