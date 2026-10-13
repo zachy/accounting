@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Pisemnost nazevSW="EPO MF ČR" verzeSW="51.3.1">
+<DPHKH1 verzePis="03.01">
+<VetaD dokument="KH1" k_uladis="DPH" rok="2026" ctvrt="3" d_poddp="13.10.2026" khdph_forma="B" />
+<VetaP c_ufo="457" c_pracufo="2602" dic="9003094320" typ_ds="F" titul="Ing" jmeno="Martin" prijmeni="Zachov" ulice="Boženy Němcové" c_pop="884" naz_obce="Doksy" psc="47201" email="martin.zachov@gmail.com" sest_jmeno="Vlasta" sest_prijmeni="Špačková" sest_telef="777933162" c_telef="722128058" />
+<VetaA2 c_radku="1" c_evid_dd="BUPPGQRR-0009" dppd="03.07.2026" zakl_dane1="2177.55" dan1="457.29" />
+<VetaA2 c_radku="2" c_evid_dd="BUPPGQRR-0010" dppd="15.07.2026" zakl_dane1="3040.62" dan1="638.53" />
+<VetaA2 c_radku="3" k_stat="IE" vatid_dod="8256796U" c_evid_dd="G176677842" dppd="09.08.2026" zakl_dane1="167.67" dan1="35.21" />
+<VetaA2 c_radku="4" k_stat="IE" vatid_dod="4143435AH" c_evid_dd="7B09DEBF-0012" dppd="12.08.2026" zakl_dane1="165.29" dan1="34.71" />
+<VetaA2 c_radku="5" c_evid_dd="BUPPGQRR-0011" dppd="15.08.2026" zakl_dane1="2178.9" dan1="457.57" />
+<VetaA2 c_radku="6" k_stat="IE" vatid_dod="8256796U" c_evid_dd="G182614853" dppd="09.09.2026" zakl_dane1="423.65" dan1="88.97" />
+<VetaA2 c_radku="7" c_evid_dd="BUPPGQRR-0012" dppd="15.09.2026" zakl_dane1="2186.1" dan1="459.08" />
+<VetaA4 c_radku="1" dic_odb="62913883" c_evid_dd="2026-0007" dppd="31.07.2026" zakl_dane1="161500" dan1="33915" kod_rezim_pl="0" zdph_44="N" />
+<VetaA4 c_radku="2" dic_odb="62913883" c_evid_dd="2026-0008" dppd="31.08.2026" zakl_dane1="170000" dan1="35700" kod_rezim_pl="0" zdph_44="N" />
+<VetaA4 c_radku="3" dic_odb="62913883" c_evid_dd="2026-0009" dppd="30.09.2026" zakl_dane1="178500" dan1="37485" kod_rezim_pl="0" zdph_44="N" />
+<VetaB3 zakl_dane1="17953.4" dan1="3770.22" />
+<VetaC obrat23="510000" pln23="17953.4" celk_zd_a2="10339.78" />
+</DPHKH1>
+<Kontrola><Soubor Delka="1779" KC="026ac61a9d9439c123a118980a707e1c" Nazev="DPHKH1-9003094320-20261013-141753" c_ufo="457" /></Kontrola></Pisemnost>

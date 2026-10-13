@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reconciliation Report</title>
+<style>
+  :root {
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --yellow: #ca8a04;
+    --yellow-bg: #fefce8;
+    --yellow-border: #fef08a;
+    --blue: #2563eb;
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+    --gray: #6b7280;
+    --gray-bg: #f9fafb;
+    --gray-border: #e5e7eb;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --bg: #ffffff;
+    --surface: #f9fafb;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    line-height: 1.5;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: white;
+    padding: 32px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .header .subtitle { opacity: 0.85; font-size: 14px; }
+  .header .meta { display: flex; gap: 24px; margin-top: 16px; font-size: 13px; opacity: 0.8; flex-wrap: wrap; }
+
+  /* Status banner */
+  .status-banner {
+    padding: 16px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-banner.clean { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .status-banner.action { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+  .status-banner .icon { font-size: 20px; }
+  .issues-list { margin-top: 10px; font-weight: 400; font-size: 13px; color: var(--red); }
+  .issues-list li { margin-left: 20px; margin-top: 4px; }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px; }
+  .summary-card .value { font-size: 22px; font-weight: 700; }
+  .summary-card .value.income { color: var(--green); }
+  .summary-card .value.expense { color: var(--red); }
+  .summary-card .value.net { color: var(--blue); }
+
+  /* Count cards */
+  .count-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .count-card {
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .count-card .num { font-size: 28px; font-weight: 700; }
+  .count-card .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .count-card.matched { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .count-card.missing { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+  .count-card.nodoc { background: var(--gray-bg); border: 1px solid var(--gray-border); color: var(--gray); }
+  .count-card.crossq { background: var(--yellow-bg); border: 1px solid var(--yellow-border); color: var(--yellow); }
+
+  /* Month sections */
+  .month-section {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .month-header {
+    padding: 16px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--gray-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .month-header:hover { background: #f3f4f6; }
+  .month-header h2 { font-size: 16px; font-weight: 600; }
+  .month-header .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge.clean { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .badge.action { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+  .month-stats {
+    display: flex;
+    gap: 20px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+  }
+  .month-stats span { white-space: nowrap; }
+
+  .month-body { padding: 0; }
+  .month-body.collapsed { display: none; }
+
+  /* Transaction category blocks */
+  .tx-category {
+    border-bottom: 1px solid var(--gray-border);
+  }
+  .tx-category:last-child { border-bottom: none; }
+  .tx-cat-header {
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tx-cat-header .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .cat-matched .tx-cat-header { color: var(--green); background: var(--green-bg); }
+  .cat-matched .dot { background: var(--green); }
+  .cat-missing .tx-cat-header { color: var(--red); background: var(--red-bg); }
+  .cat-missing .dot { background: var(--red); }
+  .cat-nodoc .tx-cat-header { color: var(--gray); background: var(--gray-bg); }
+  .cat-nodoc .dot { background: var(--gray); }
+  .cat-crossq .tx-cat-header { color: var(--yellow); background: var(--yellow-bg); }
+  .cat-crossq .dot { background: var(--yellow); }
+
+  /* Transaction rows */
+  .tx-table { width: 100%; border-collapse: collapse; }
+  .tx-table td { padding: 8px 20px; font-size: 13px; vertical-align: top; }
+  .tx-table tr { border-bottom: 1px solid #f3f4f6; }
+  .tx-table tr:last-child { border-bottom: none; }
+  .tx-date { width: 70px; color: var(--text-secondary); white-space: nowrap; }
+  .tx-amount { width: 120px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tx-amount.pos { color: var(--green); }
+  .tx-amount.neg { color: var(--red); }
+  .tx-detail { color: var(--text); }
+  .tx-detail .counterparty { font-weight: 500; }
+  .tx-detail .pdf-match { color: var(--green); font-size: 12px; }
+  .tx-detail .hint { color: var(--red); font-size: 12px; font-style: italic; }
+  .tx-detail .note { color: var(--text-secondary); font-size: 12px; }
+  .tx-detail .reason { color: var(--gray); font-size: 12px; }
+
+  .empty-state { padding: 12px 20px; font-size: 13px; color: var(--text-secondary); font-style: italic; }
+
+  /* Extra documents */
+  .extras-section {
+    background: var(--bg);
+    border: 1px solid var(--gray-border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .extras-header {
+    padding: 16px 20px;
+    background: var(--yellow-bg);
+    border-bottom: 1px solid var(--yellow-border);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--yellow);
+  }
+  .extras-table { width: 100%; border-collapse: collapse; }
+  .extras-table td { padding: 8px 20px; font-size: 13px; vertical-align: top; }
+  .extras-table tr { border-bottom: 1px solid #f3f4f6; }
+  .extras-table tr:last-child { border-bottom: none; }
+  .extra-file { font-weight: 500; font-family: 'SF Mono', 'Consolas', monospace; font-size: 12px; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-secondary); }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .container { max-width: 100%; padding: 0; }
+    .header { border-radius: 0; }
+    .month-body.collapsed { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<script>
+const DATA = {
+ "year": 2026,
+ "quarter": "Q3",
+ "generated": "2026-10-07",
+ "account": "6222151389/0800",
+ "holder": "Martin Zachov",
+ "months": [
+  {
+   "name": "July 2026",
+   "statement_number": "007",
+   "opening_balance": 66350.11,
+   "closing_balance": 17690.84,
+   "total_income": 229484.06,
+   "total_expenses": -278143.33,
+   "transactions": [
+    {
+     "date": "05.07.2026",
+     "amount": -2242.44,
+     "type": "Platba kartou",
+     "counterparty": "Anthropic",
+     "description": "Claude Max 5x, EUR 90.00 (d.tran. 03.07.)",
+     "variable_symbol": "3072026",
+     "category": "matched",
+     "matched_pdf": "vydaj_anthropic_BUPPGQRR-0009.pdf",
+     "note": "Amount + vendor match — EUR 90.00, invoice 03.07.2026"
+    },
+    {
+     "date": "09.07.2026",
+     "amount": 229484.06,
+     "type": "Příchozí úhrada",
+     "counterparty": "COPS Solutions s.r.o.",
+     "description": "Payment for invoice 2026-0006",
+     "variable_symbol": "20260006",
+     "category": "cross_quarter",
+     "matched_pdf": "—",
+     "note": "Payment for previous quarter's invoice 2026-0006 — OK, invoice in Q2 folder (prijem_cops_20260006.pdf)"
+    },
+    {
+     "date": "10.07.2026",
+     "amount": -4205.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "VOZP",
+     "description": "VOZP zálohy",
+     "variable_symbol": "9003094320",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Health insurance advance"
+    },
+    {
+     "date": "10.07.2026",
+     "amount": -1210.4,
+     "type": "Inkaso",
+     "counterparty": "T-Mobile Czech Republic",
+     "description": "Vyúčtování služeb 6.6.–5.7.2026",
+     "variable_symbol": "1949123126",
+     "category": "matched",
+     "matched_pdf": "vydaj_tmobile_1949123126.pdf",
+     "note": "VS match — DUZP 05.07.2026"
+    },
+    {
+     "date": "14.07.2026",
+     "amount": -10005.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "OSSZ",
+     "description": "OSSZ zálohy",
+     "variable_symbol": "50570720",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Social insurance advance"
+    },
+    {
+     "date": "14.07.2026",
+     "amount": -100000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "14.07.2026",
+     "amount": -50000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "17.07.2026",
+     "amount": -3134.49,
+     "type": "Platba kartou",
+     "counterparty": "Anthropic",
+     "description": "Claude Max 20x upgrade, EUR 125.49 (d.tran. 15.07.)",
+     "variable_symbol": "15072026",
+     "category": "matched",
+     "matched_pdf": "vydaj_anthropic_BUPPGQRR-0010.pdf",
+     "note": "Amount + vendor match — EUR 125.49 (EUR 180 − 54.51 proration credit)"
+    },
+    {
+     "date": "18.07.2026",
+     "amount": -98111.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Finanční úřad (705-77628461/0710)",
+     "description": "DPH za Q2 2026",
+     "variable_symbol": "9003094320",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "VAT payment for Q2 2026 — equals DPHDP3 Q2 vlastní daň 98 111 Kč"
+    },
+    {
+     "date": "19.07.2026",
+     "amount": -4235.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "SPAMI s.r.o.",
+     "description": "Platba za fakturu č. 2026161",
+     "variable_symbol": "2026161",
+     "category": "matched",
+     "matched_pdf": "vydaj_spami_2026161.pdf",
+     "note": "VS match — účetní práce za II. Q 2026, DUZP 18.07.2026"
+    },
+    {
+     "date": "20.07.2026",
+     "amount": -5000.0,
+     "type": "Platba kartou",
+     "counterparty": "ORLEN (CZ Litvinov)",
+     "description": "Fuel card top-up (d.tran. 18.07.)",
+     "variable_symbol": "18072026",
+     "category": "matched",
+     "matched_pdf": "vydaj_orlen_349992607180029.pdf, vydaj_orlen_349992607070005.pdf",
+     "note": "Fuel card model — receipts 07.07. (from prior card credit) and 18.07."
+    }
+   ]
+  },
+  {
+   "name": "August 2026",
+   "statement_number": "008",
+   "opening_balance": 17690.84,
+   "closing_balance": 145071.23,
+   "total_income": 195415.0,
+   "total_expenses": -68034.61,
+   "transactions": [
+    {
+     "date": "10.08.2026",
+     "amount": -4205.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "VOZP",
+     "description": "VOZP zálohy",
+     "variable_symbol": "9003094320",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Health insurance advance"
+    },
+    {
+     "date": "10.08.2026",
+     "amount": 195415.0,
+     "type": "Příchozí úhrada",
+     "counterparty": "COPS Solutions s.r.o.",
+     "description": "Payment for invoice 2026-0007",
+     "variable_symbol": "20260007",
+     "category": "matched",
+     "matched_pdf": "prijem_cops_20260007.pdf",
+     "note": "VS match — invoice 2026-0007, DUZP 31.07.2026"
+    },
+    {
+     "date": "11.08.2026",
+     "amount": -172.45,
+     "type": "Platba kartou",
+     "counterparty": "Microsoft Azure (msbill.info G176)",
+     "description": "Azure, EUR 6.91 (d.tran. 09.08.)",
+     "variable_symbol": "9082026",
+     "category": "matched",
+     "matched_pdf": "vydaj_microsoft_G176677842.pdf",
+     "note": "Amount + vendor match — EUR 6.91, Microsoft Ireland, invoice 09.08.2026 (Azure 07/2026)"
+    },
+    {
+     "date": "11.08.2026",
+     "amount": -50000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "12.08.2026",
+     "amount": -1241.64,
+     "type": "Inkaso",
+     "counterparty": "T-Mobile Czech Republic",
+     "description": "Vyúčtování služeb 6.7.–5.8.2026",
+     "variable_symbol": "1950423226",
+     "category": "matched",
+     "matched_pdf": "vydaj_tmobile_1950423226.pdf",
+     "note": "VS match — DUZP 05.08.2026"
+    },
+    {
+     "date": "14.08.2026",
+     "amount": -10005.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "OSSZ",
+     "description": "OSSZ zálohy",
+     "variable_symbol": "50570720",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Social insurance advance"
+    },
+    {
+     "date": "14.08.2026",
+     "amount": -165.29,
+     "type": "Platba kartou",
+     "counterparty": "OpenAI (ChatGPT)",
+     "description": "OPENAI *CHATGP, CZK 165.29 (d.tran. 12.08.)",
+     "variable_symbol": "12082026",
+     "category": "matched",
+     "matched_pdf": "vydaj_openai_7B09DEBF-0012.pdf",
+     "note": "Amount + vendor match — 165.29 Kč, OpenAI Ireland, ChatGPT Go, invoice 12.08.2026"
+    },
+    {
+     "date": "17.08.2026",
+     "amount": -2245.23,
+     "type": "Platba kartou",
+     "counterparty": "Anthropic",
+     "description": "Claude Max 5x, EUR 90.00 (d.tran. 15.08.)",
+     "variable_symbol": "15082026",
+     "category": "matched",
+     "matched_pdf": "vydaj_anthropic_BUPPGQRR-0011.pdf",
+     "note": "Amount + vendor match — EUR 90.00, invoice 15.08.2026"
+    }
+   ]
+  },
+  {
+   "name": "September 2026",
+   "statement_number": "009",
+   "opening_balance": 145071.23,
+   "closing_balance": 157631.52,
+   "total_income": 205700.0,
+   "total_expenses": -193139.71,
+   "transactions": [
+    {
+     "date": "03.09.2026",
+     "amount": -70000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "03.09.2026",
+     "amount": -45000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "10.09.2026",
+     "amount": -4205.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "VOZP",
+     "description": "VOZP zálohy",
+     "variable_symbol": "9003094320",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Health insurance advance"
+    },
+    {
+     "date": "10.09.2026",
+     "amount": -1241.64,
+     "type": "Inkaso",
+     "counterparty": "T-Mobile Czech Republic",
+     "description": "Vyúčtování služeb 6.8.–5.9.2026",
+     "variable_symbol": "2432703326",
+     "category": "matched",
+     "matched_pdf": "vydaj_tmobile_2432703326.pdf",
+     "note": "VS match — DUZP 05.09.2026"
+    },
+    {
+     "date": "11.09.2026",
+     "amount": -435.46,
+     "type": "Platba kartou",
+     "counterparty": "Microsoft Azure (msbill.info G182)",
+     "description": "Azure, EUR 17.47 (d.tran. 09.09.)",
+     "variable_symbol": "9092026",
+     "category": "matched",
+     "matched_pdf": "vydaj_microsoft_G182614853.pdf",
+     "note": "Amount + vendor match — EUR 17.47, Microsoft Ireland, invoice 09.09.2026 (Azure 08/2026)"
+    },
+    {
+     "date": "14.09.2026",
+     "amount": -10005.0,
+     "type": "Trvalý příkaz",
+     "counterparty": "OSSZ",
+     "description": "OSSZ zálohy",
+     "variable_symbol": "50570720",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Social insurance advance"
+    },
+    {
+     "date": "14.09.2026",
+     "amount": 205700.0,
+     "type": "Příchozí úhrada",
+     "counterparty": "COPS Solutions s.r.o.",
+     "description": "Payment for invoice 2026-0008",
+     "variable_symbol": "20260008",
+     "category": "matched",
+     "matched_pdf": "prijem_cops_20260008.pdf",
+     "note": "VS match — invoice 2026-0008, DUZP 31.08.2026"
+    },
+    {
+     "date": "14.09.2026",
+     "amount": -5000.0,
+     "type": "Platba kartou",
+     "counterparty": "ORLEN (CZ Litvinov)",
+     "description": "Fuel card top-up (d.tran. 12.09.)",
+     "variable_symbol": "12092026",
+     "category": "matched",
+     "matched_pdf": "vydaj_orlen_349992609120009.pdf, vydaj_orlen_349992608170005.pdf, vydaj_orlen_349992608310003.pdf",
+     "note": "Fuel card model — receipts 17.08., 31.08. (from card credit) and 12.09."
+    },
+    {
+     "date": "16.09.2026",
+     "amount": -50000.0,
+     "type": "Tuzemská odchozí úhrada",
+     "counterparty": "Own account 2190590193/0800",
+     "description": "Personal transfer",
+     "variable_symbol": "—",
+     "category": "no_doc_needed",
+     "matched_pdf": "—",
+     "note": "Personal transfer (own savings)"
+    },
+    {
+     "date": "17.09.2026",
+     "amount": -2252.61,
+     "type": "Platba kartou",
+     "counterparty": "Anthropic",
+     "description": "Claude Max 5x, EUR 90.00 (d.tran. 15.09.)",
+     "variable_symbol": "15092026",
+     "category": "matched",
+     "matched_pdf": "vydaj_anthropic_BUPPGQRR-0012.pdf",
+     "note": "Amount + vendor match — EUR 90.00, invoice 15.09.2026"
+    },
+    {
+     "date": "25.09.2026",
+     "amount": -5000.0,
+     "type": "Platba kartou",
+     "counterparty": "ORLEN (CZ Litvinov)",
+     "description": "Fuel card top-up (d.tran. 23.09.)",
+     "variable_symbol": "23092026",
+     "category": "matched",
+     "matched_pdf": "vydaj_orlen_349992609230015.pdf, vydaj_orlen_349992609150017.pdf",
+     "note": "Fuel card model — receipts 15.09. and 23.09."
+    },
+    {
+     "date": "30.09.2026",
+     "amount": 215985.0,
+     "type": "Vydaná faktura",
+     "counterparty": "COPS Solutions s.r.o.",
+     "description": "Issued invoice 2026-0009 (not yet paid)",
+     "variable_symbol": "20260009",
+     "category": "cross_quarter",
+     "matched_pdf": "prijem_cops_20260009.pdf",
+     "note": "Issued invoice 2026-0009, DUZP 30.09.2026, due 14.10.2026 — payment expected in next quarter"
+    }
+   ]
+  }
+ ],
+ "extra_documents": [],
+ "summary": {
+  "total_income": 630599.06,
+  "total_expenses": -539317.65,
+  "net": 91281.41,
+  "matched_count": 16,
+  "missing_count": 0,
+  "no_doc_needed_count": 13,
+  "cross_quarter_count": 2
+ },
+ "status": "CLEAN",
+ "issues": []
+};
+
+function fmt(n) {
+  if (n == null || n === '—') return '—';
+  const abs = Math.abs(n);
+  const parts = abs.toFixed(2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const sign = n < 0 ? '-' : (n > 0 ? '+' : '');
+  return sign + parts.join('.') + ' CZK';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderTxRows(txs) {
+  if (!txs.length) return '<tr><td colspan="3" class="empty-state">(none)</td></tr>';
+  return txs.map(t => {
+    const amtClass = t.amount > 0 ? 'pos' : 'neg';
+    let detail = `<span class="counterparty">${esc(t.counterparty)}</span>`;
+    if (t.description && t.description !== t.counterparty) detail += ` <span class="note">— ${esc(t.description)}</span>`;
+    if (t.variable_symbol && t.variable_symbol !== '—') detail += ` <span class="note">[VS: ${esc(t.variable_symbol)}]</span>`;
+    if (t.category === 'matched' && t.matched_pdf && t.matched_pdf !== '—')
+      detail += `<br><span class="pdf-match">&#10003; ${esc(t.matched_pdf)}</span>`;
+    if (t.category === 'missing' && t.note)
+      detail += `<br><span class="hint">&#8627; ${esc(t.note)}</span>`;
+    if (t.category === 'no_doc_needed' && t.note)
+      detail += `<br><span class="reason">${esc(t.note)}</span>`;
+    if (t.category === 'cross_quarter' && t.note)
+      detail += `<br><span class="note">&#8627; ${esc(t.note)}</span>`;
+    return `<tr>
+      <td class="tx-date">${esc(t.date)}</td>
+      <td class="tx-amount ${amtClass}">${fmt(t.amount)}</td>
+      <td class="tx-detail">${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMonth(m, idx) {
+  const txs = m.transactions || [];
+  const matched = txs.filter(t => t.category === 'matched');
+  const missing = txs.filter(t => t.category === 'missing');
+  const nodoc = txs.filter(t => t.category === 'no_doc_needed');
+  const crossq = txs.filter(t => t.category === 'cross_quarter');
+  const isClean = missing.length === 0;
+
+  return `
+  <div class="month-section">
+    <div class="month-header" onclick="this.nextElementSibling.nextElementSibling.classList.toggle('collapsed')">
+      <h2>${esc(m.name)} <span style="font-weight:400;color:var(--text-secondary);font-size:13px">#${esc(m.statement_number)}</span></h2>
+      <span class="badge ${isClean ? 'clean' : 'action'}">${isClean ? 'Clean' : missing.length + ' Missing'}</span>
+    </div>
+    <div class="month-stats">
+      <span>Opening: <b>${fmt(m.opening_balance).replace(/^[+-]/, '')}</b></span>
+      <span>Closing: <b>${fmt(m.closing_balance).replace(/^[+-]/, '')}</b></span>
+      <span>Income: <b style="color:var(--green)">${fmt(m.total_income)}</b></span>
+      <span>Expenses: <b style="color:var(--red)">${fmt(m.total_expenses)}</b></span>
+      <span>Txns: <b>${txs.length}</b></span>
+    </div>
+    <div class="month-body">
+      ${matched.length || true ? `<div class="tx-category cat-matched">
+        <div class="tx-cat-header"><span class="dot"></span> Matched (${matched.length})</div>
+        <table class="tx-table">${renderTxRows(matched)}</table>
+      </div>` : ''}
+      ${`<div class="tx-category cat-missing">
+        <div class="tx-cat-header"><span class="dot"></span> Missing Documents (${missing.length})</div>
+        <table class="tx-table">${renderTxRows(missing)}</table>
+      </div>`}
+      ${`<div class="tx-category cat-nodoc">
+        <div class="tx-cat-header"><span class="dot"></span> No Document Needed (${nodoc.length})</div>
+        <table class="tx-table">${renderTxRows(nodoc)}</table>
+      </div>`}
+      ${crossq.length ? `<div class="tx-category cat-crossq">
+        <div class="tx-cat-header"><span class="dot"></span> Cross-Quarter (${crossq.length})</div>
+        <table class="tx-table">${renderTxRows(crossq)}</table>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const d = DATA;
+  const s = d.summary || {};
+  const isClean = d.status === 'CLEAN';
+
+  let html = `
+  <div class="header">
+    <h1>Reconciliation: ${esc(d.year)} ${esc(d.quarter)}</h1>
+    <div class="subtitle">Bank Statement vs. Document Cross-Reference</div>
+    <div class="meta">
+      <span>Account: ${esc(d.account)}</span>
+      <span>Holder: ${esc(d.holder)}</span>
+      <span>Generated: ${esc(d.generated)}</span>
+      <span>Statements: ${(d.months||[]).length}</span>
+    </div>
+  </div>
+
+  <div class="status-banner ${isClean ? 'clean' : 'action'}">
+    <span class="icon">${isClean ? '&#10004;' : '&#9888;'}</span>
+    <div>
+      <div>${isClean ? 'CLEAN — All transactions accounted for' : 'ACTION NEEDED — ' + (s.missing_count||0) + ' missing document(s)'}</div>
+      ${!isClean && d.issues && d.issues.length ? '<ol class="issues-list">' + d.issues.map(i => '<li>' + esc(i) + '</li>').join('') + '</ol>' : ''}
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card"><div class="label">Total Income</div><div class="value income">${fmt(s.total_income)}</div></div>
+    <div class="summary-card"><div class="label">Total Expenses</div><div class="value expense">${fmt(s.total_expenses)}</div></div>
+    <div class="summary-card"><div class="label">Net</div><div class="value net">${fmt(s.net)}</div></div>
+  </div>
+
+  <div class="count-grid">
+    <div class="count-card matched"><div class="num">${s.matched_count||0}</div><div class="lbl">Matched</div></div>
+    <div class="count-card missing"><div class="num">${s.missing_count||0}</div><div class="lbl">Missing</div></div>
+    <div class="count-card nodoc"><div class="num">${s.no_doc_needed_count||0}</div><div class="lbl">No Doc Needed</div></div>
+    <div class="count-card crossq"><div class="num">${s.cross_quarter_count||0}</div><div class="lbl">Cross-Quarter</div></div>
+  </div>
+  `;
+
+  (d.months || []).forEach((m, i) => { html += renderMonth(m, i); });
+
+  const extras = d.extra_documents || [];
+  if (extras.length) {
+    html += `
+    <div class="extras-section">
+      <div class="extras-header">Extra Documents (${extras.length})</div>
+      <table class="extras-table">
+        ${extras.map(e => `<tr>
+          <td><span class="extra-file">${esc(e.filename)}</span></td>
+          <td>${esc(e.vendor)}</td>
+          <td class="tx-amount" style="color:var(--text)">${e.amount ? fmt(e.amount).replace(/^[+-]/, '') : '—'}</td>
+          <td>${esc(e.date || '—')}</td>
+          <td><span class="note">${esc(e.note || '')}</span></td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+  }
+
+  html += `<div class="footer">Reconciliation report generated by Claude Code reconcile skill</div>`;
+
+  document.getElementById('app').innerHTML = html;
+  document.title = 'Reconciliation ' + d.year + ' ' + d.quarter;
+}
+
+render();
+</script>
+</body>
+</html>
