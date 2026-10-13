@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kontrolní hlášení + DPH</title>
+<style>
+  :root{--green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;--red:#dc2626;--red-bg:#fef2f2;
+    --yellow:#ca8a04;--yellow-bg:#fefce8;--yellow-border:#fef08a;--blue:#2563eb;--blue-bg:#eff6ff;
+    --blue-border:#bfdbfe;--gray:#6b7280;--gray-bg:#f9fafb;--gray-border:#e5e7eb;--text:#111827;
+    --text-secondary:#4b5563;--bg:#fff;--surface:#f9fafb;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;color:var(--text);background:var(--surface);line-height:1.5;}
+  .container{max-width:1100px;margin:0 auto;padding:24px 16px;}
+  .header{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:32px;border-radius:12px;margin-bottom:20px;}
+  .header h1{font-size:24px;font-weight:700;margin-bottom:4px;}
+  .header .subtitle{opacity:.85;font-size:14px;}
+  .header .meta{display:flex;gap:24px;margin-top:16px;font-size:13px;opacity:.85;flex-wrap:wrap;}
+  .banner{padding:16px 24px;border-radius:8px;font-size:14px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start;background:var(--blue-bg);border:1px solid var(--blue-border);color:#1e40af;}
+  .banner .icon{font-size:20px;line-height:1;}
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
+  .summary-card{background:var(--bg);border:1px solid var(--gray-border);border-radius:8px;padding:16px;}
+  .summary-card .label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:4px;}
+  .summary-card .value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .summary-card .value.out{color:var(--red);}.summary-card .value.in{color:var(--green);}.summary-card .value.due{color:var(--blue);}
+  .summary-card .sub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+  h2.sec{font-size:18px;font-weight:700;margin:28px 0 12px;}
+  .block{background:var(--bg);border:1px solid var(--gray-border);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+  .block-head{padding:12px 18px;background:var(--surface);border-bottom:1px solid var(--gray-border);display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .block-head .code{font-weight:700;font-size:15px;}
+  .block-head .desc{font-size:12.5px;color:var(--text-secondary);flex:1;min-width:200px;}
+  .block-head .maps{font-size:11px;color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-border);padding:2px 8px;border-radius:99px;white-space:nowrap;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{padding:8px 14px;font-size:13px;text-align:left;vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);border-bottom:1px solid var(--gray-border);font-weight:600;}
+  td{border-bottom:1px solid #f3f4f6;}tr:last-child td{border-bottom:none;}
+  .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .mono{font-family:'SF Mono','Consolas',monospace;font-size:12px;}
+  tr.total td{border-top:2px solid var(--gray-border);font-weight:700;background:var(--gray-bg);}
+  tr.hl td{background:var(--blue-bg);font-weight:700;}
+  .flag{background:var(--bg);border:1px solid var(--gray-border);border-left:3px solid var(--yellow);border-radius:6px;padding:12px 16px;margin-bottom:10px;font-size:13px;}
+  .flag.ok{border-left-color:var(--green);}.flag .t{font-weight:700;display:block;margin-bottom:2px;}
+  .steps{background:var(--bg);border:1px solid var(--gray-border);border-radius:10px;padding:4px 20px 12px;}
+  .steps li{margin:12px 0 12px 20px;font-size:13.5px;}
+  code{background:var(--gray-bg);border:1px solid var(--gray-border);border-radius:4px;padding:1px 5px;font-size:12px;font-family:'SF Mono','Consolas',monospace;}
+  .footer{text-align:center;padding:24px;font-size:12px;color:var(--text-secondary);}
+  @media print{body{background:#fff;}.container{max-width:100%;padding:0;}.header{border-radius:0;}}
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<script>
+const DATA = /*__VAT_DATA__*/null/*__VAT_DATA_END__*/;  // replace the token  /*__VAT_DATA__*/null/*__VAT_DATA_END__*/  with your JSON object
+
+const cz = (n,dp=2) => n==null ? '—' : n.toLocaleString('cs-CZ',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+const esc = s => { const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; };
+
+function rows(list, cols){ return list.map(r => '<tr>'+cols.map(c => `<td class="${c.cls||''}">${c.fmt?c.fmt(r[c.k]):esc(r[c.k])}</td>`).join('')+'</tr>').join(''); }
+
+function render(){
+  const d = DATA, s = d.summary;
+  let html = `
+  <div class="header">
+    <h1>Kontrolní hlášení + Přiznání k DPH</h1>
+    <div class="subtitle">${esc(d.quarter)} ${esc(d.year)} · podklad pro podání datovou schránkou</div>
+    <div class="meta"><span>Plátce: ${esc(d.payer.name)}</span><span>DIČ: ${esc(d.payer.dic)}</span><span>FÚ: ${esc(d.payer.office)}</span></div>
+  </div>
+  <div class="banner"><span class="icon">&#9200;</span><div>${esc(d.deadline_note)}</div></div>
+  <div class="summary-grid">
+    <div class="summary-card"><div class="label">Daň na výstupu</div><div class="value out">${cz(s.vystup,0)} Kč</div><div class="sub">ř. 62</div></div>
+    <div class="summary-card"><div class="label">Odpočet daně</div><div class="value in">${cz(s.odpocet,0)} Kč</div><div class="sub">ř. 63</div></div>
+    <div class="summary-card"><div class="label">${s.vlastni>=0?'Vlastní daň k úhradě':'Nadměrný odpočet'}</div><div class="value due">${cz(Math.abs(s.vlastni),0)} Kč</div><div class="sub">ř. ${s.vlastni>=0?64:65}</div></div>
+  </div>
+
+  <h2 class="sec">Kontrolní hlášení (DPHKH1) — v haléřích</h2>
+  <div class="block"><div class="block-head"><span class="code">A.4</span><span class="desc">Uskutečněná plnění nad 10 000 Kč (vystavené faktury)</span><span class="maps">→ ř. 1</span></div>
+    <table><thead><tr><th>DIČ odb.</th><th>Doklad</th><th>DUZP</th><th class="num">Základ</th><th class="num">Daň 21 %</th></tr></thead><tbody>
+    ${rows(d.a4,[{k:'dic',cls:'mono'},{k:'doklad',cls:'mono'},{k:'duzp'},{k:'zaklad',cls:'num',fmt:cz},{k:'dan',cls:'num',fmt:cz}])}
+    <tr class="total"><td colspan="3">Celkem A.4</td><td class="num">${cz(d.a4_total.zaklad)}</td><td class="num">${cz(d.a4_total.dan)}</td></tr>
+    </tbody></table></div>
+
+  <div class="block"><div class="block-head"><span class="code">A.2</span><span class="desc">Reverse charge — služby od osob neusazených v tuzemsku (§ 108)</span><span class="maps">→ ř. 5 / ř. 12</span></div>
+    <table><thead><tr><th>Dodavatel</th><th>Doklad</th><th>DUZP</th><th>ř.</th><th class="num">Základ</th><th class="num">Daň 21 %</th></tr></thead><tbody>
+    ${rows(d.a2,[{k:'supplier',cls:'mono'},{k:'doklad',cls:'mono'},{k:'duzp'},{k:'line'},{k:'zaklad',cls:'num',fmt:cz},{k:'dan',cls:'num',fmt:cz}])}
+    <tr class="total"><td colspan="4">Celkem A.2</td><td class="num">${cz(d.a2_total.zaklad)}</td><td class="num">${cz(d.a2_total.dan)}</td></tr>
+    </tbody></table></div>
+
+  <div class="block"><div class="block-head"><span class="code">B.3</span><span class="desc">Přijatá plnění do 10 000 Kč (souhrnně)</span><span class="maps">→ ř. 40</span></div>
+    <table><thead><tr><th>Sazba</th><th class="num">Základ</th><th class="num">Daň</th></tr></thead><tbody>
+    <tr><td>21 %</td><td class="num">${cz(d.b3.zaklad)}</td><td class="num">${cz(d.b3.dan)}</td></tr></tbody></table></div>
+
+  <h2 class="sec">Přiznání k DPH (DPHDP3) — v celých Kč</h2>
+  <div class="block"><table class="dph"><thead><tr><th>Ř.</th><th>Popis</th><th class="num">Základ</th><th class="num">Daň</th></tr></thead><tbody>
+    <tr><td>1</td><td>Dodání zboží/služby v tuzemsku 21 %</td><td class="num">${cz(d.dph.r1.z,0)}</td><td class="num">${cz(d.dph.r1.d,0)}</td></tr>
+    <tr><td>5</td><td>Přijetí služby § 9/1 od osoby reg. v JČS</td><td class="num">${cz(d.dph.r5.z,0)}</td><td class="num">${cz(d.dph.r5.d,0)}</td></tr>
+    <tr><td>12</td><td>Ostatní plnění, daň přiznává příjemce (§ 108)</td><td class="num">${cz(d.dph.r12.z,0)}</td><td class="num">${cz(d.dph.r12.d,0)}</td></tr>
+    <tr><td>40</td><td>Odpočet od plátců 21 %</td><td class="num">${cz(d.dph.r40.z,0)}</td><td class="num">${cz(d.dph.r40.d,0)}</td></tr>
+    <tr><td>43</td><td>Odpočet z ř. 3–13 (reverse charge)</td><td class="num">${cz(d.dph.r43.z,0)}</td><td class="num">${cz(d.dph.r43.d,0)}</td></tr>
+    <tr class="hl"><td>62</td><td>Daň na výstupu</td><td class="num">—</td><td class="num">${cz(d.dph.r62,0)}</td></tr>
+    <tr class="hl"><td>63</td><td>Odpočet daně</td><td class="num">—</td><td class="num">${cz(d.dph.r63,0)}</td></tr>
+    <tr class="hl"><td>64</td><td>Vlastní daň (k úhradě)</td><td class="num">—</td><td class="num">${cz(d.dph.r64,0)}</td></tr>
+  </tbody></table></div>`;
+
+  if(d.fx && d.fx.length){
+    html += `<h2 class="sec">Kurzy ČNB (reverse charge)</h2><div class="block"><table>
+      <thead><tr><th>Doklad</th><th>Měna</th><th class="num">Částka</th><th class="num">Kurz ČNB</th><th>Ke dni</th><th class="num">Základ CZK</th></tr></thead><tbody>
+      ${rows(d.fx,[{k:'doklad',cls:'mono'},{k:'ccy'},{k:'amount',cls:'num',fmt:v=>cz(v)},{k:'rate',cls:'num',fmt:v=>cz(v,3)},{k:'rate_date'},{k:'base',cls:'num',fmt:cz}])}
+      </tbody></table></div>`;
+  }
+
+  if(d.detail && d.detail.length){
+    html += `<h2 class="sec">Doklady k odpočtu (B.3 / ř. 40)</h2><div class="block"><table>
+      <thead><tr><th>Dodavatel</th><th>Doklad</th><th>DUZP</th><th class="num">Základ</th><th class="num">Daň</th><th class="num">Celkem</th></tr></thead><tbody>
+      ${rows(d.detail,[{k:'vendor'},{k:'doklad',cls:'mono'},{k:'duzp'},{k:'zaklad',cls:'num',fmt:cz},{k:'dan',cls:'num',fmt:cz},{k:'celkem',cls:'num',fmt:cz}])}
+      <tr class="total"><td colspan="3">Celkem</td><td class="num">${cz(d.detail_total.zaklad)}</td><td class="num">${cz(d.detail_total.dan)}</td><td class="num">${cz(d.detail_total.celkem)}</td></tr>
+      </tbody></table></div>`;
+  }
+
+  if(d.flags && d.flags.length){
+    html += `<h2 class="sec">Předpoklady a body ke kontrole</h2>`;
+    html += d.flags.map(f => `<div class="flag ${f.ok?'ok':''}"><span class="t">${esc(f.title)}</span>${f.text}</div>`).join('');
+  }
+
+  if(d.steps && d.steps.length){
+    html += `<h2 class="sec">Odeslání datovou schránkou</h2><div class="steps"><ol>${d.steps.map(x=>`<li>${x}</li>`).join('')}</ol></div>`;
+  }
+
+  html += `<div class="footer">Sestaveno skillem vat-return · pracovní pomůcka, ne daňové poradenství · před odesláním ověřte v EPO.</div>`;
+  document.getElementById('app').innerHTML = html;
+  document.title = 'KH+DPH ' + d.year + ' ' + d.quarter;
+}
+render();
+</script>
+</body>
+</html>
