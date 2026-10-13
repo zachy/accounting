@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KONTROLNÍ HLÁŠENÍ DPH (DPHKH1) — 2. čtvrtletí 2026 · Martin Zachov, DIČ CZ9003094320
+  Zrcadlí podání účetní (Vlasta Špačková, SPAMI s.r.o.), podané přes EPO 18.07.2026.
+  Opraveno oproti mému původnímu návrhu:
+    - doplněn 4. řádek A.2 (Anthropic R27NSHFT-0001) = reverse charge dle § 108,
+    - kurzy přepočteny denním kurzem ČNB k DUZP,
+    - k_uladis="DPH", EU dodavatel = k_stat + vatid_dod bez prefixu, doplněn oddíl C,
+    - c_ufo/c_pracufo (FÚ pro Liberecký kraj / ÚzP Česká Lípa).
+-->
+<Pisemnost nazevSW="EPO MF ČR" verzeSW="49.5.1">
+<DPHKH1 verzePis="03.01">
+<VetaD dokument="KH1" k_uladis="DPH" rok="2026" ctvrt="2" d_poddp="18.07.2026" khdph_forma="B" />
+<VetaP c_ufo="457" c_pracufo="2602" dic="9003094320" typ_ds="F" titul="Ing" jmeno="Martin" prijmeni="Zachov" ulice="Boženy Němcové" c_pop="884" naz_obce="Doksy" psc="47201" email="martin.zachov@gmail.com" sest_jmeno="Vlasta" sest_prijmeni="Špačková" sest_telef="777933162" c_telef="722128058" />
+<VetaA2 c_radku="1" c_evid_dd="R27NSHFT-0001" dppd="03.04.2026" zakl_dane1="128.81" dan1="27.05" />
+<VetaA2 c_radku="2" k_stat="NL" vatid_dod="858562947B01" c_evid_dd="RNT9JAW8-0001" dppd="16.04.2026" zakl_dane1="2337.6" dan1="490.9" />
+<VetaA2 c_radku="3" c_evid_dd="BUPPGQRR-0006" dppd="01.05.2026" zakl_dane1="2670.83" dan1="560.87" />
+<VetaA2 c_radku="4" c_evid_dd="BUPPGQRR-0008" dppd="03.06.2026" zakl_dane1="25.4" dan1="5.33" />
+<VetaA4 c_radku="1" dic_odb="62913883" c_evid_dd="2026-0004" dppd="30.04.2026" zakl_dane1="163680" dan1="34372.8" kod_rezim_pl="0" zdph_44="N" />
+<VetaA4 c_radku="2" dic_odb="62913883" c_evid_dd="2026-0005" dppd="29.05.2026" zakl_dane1="141360" dan1="29685.6" kod_rezim_pl="0" zdph_44="N" />
+<VetaA4 c_radku="3" dic_odb="62913883" c_evid_dd="2026-0006" dppd="30.06.2026" zakl_dane1="189656.25" dan1="39827.81" kod_rezim_pl="0" zdph_44="N" />
+<VetaB3 zakl_dane1="27500.71" dan1="5775.15" />
+<VetaC obrat23="494696.25" obrat5="0" pln23="27500.71" pln5="0" pln_rez_pren="0" rez_pren23="0" rez_pren5="0" celk_zd_a2="5162.64" />
+</DPHKH1>
+</Pisemnost>
